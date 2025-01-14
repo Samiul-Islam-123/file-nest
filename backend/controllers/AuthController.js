@@ -1,4 +1,5 @@
 const UserModel = require("../models/UserModel");
+const sendEmail = require("../utils/Email");
 const { generateToken } = require("../utils/JWT");
 const HashPassword = require("../utils/PasswordHash");
 
@@ -26,9 +27,14 @@ const Signup = async (req,res) => {
         email,
         password
     });
+    
 
     //save the user
-    await UserObj.save();
+    //await UserObj.save();
+
+    await sendEmail(email, "Sample Subject", " this is Sample Body", `
+        <p1>Sample Paragraph</p1>
+        `)
 
     //verify user email
     //coming soon :)   
