@@ -6,4 +6,5 @@ const HashPassword = async(originalPassword) => {
     return hashedPassword;
 }
 
+
 module.exports = HashPassword;
