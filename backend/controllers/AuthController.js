@@ -166,7 +166,7 @@ const VerifyOTP = async (req, res) => {
                 </div>
                 `
             );
-            
+
 
 
             //send it to user
@@ -192,6 +192,151 @@ const VerifyOTP = async (req, res) => {
 
 const ResetPassword = async (req, res) => {
     //Reset password logic
+
+    const { email } = req.body;
+
+    try {
+        if (!email)
+            return res.json({
+                message: "Email should be provided",
+                success: false
+            })
+
+
+        const User = await UserModel.findOne({
+            email: email
+        })
+
+        if (!User)
+            return res.json({
+                message: "User not found",
+                success: false
+            })
+
+
+        const otp = generateOTP();
+        const securedOTP = await HashPassword(otp);
+        //add new OTP to user document
+        User.otp = securedOTP;
+        await User.save()
+        //send otp to user's email
+        await sendEmail(
+            email,
+            `${process.env.APP_NAME} - Password Reset Request`,
+            `You requested to reset your password on ${process.env.APP_NAME}. Your OTP for verification is ${otp}.`,
+            `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h2 style="color: #4CAF50;">Password Reset Request</h2>
+              <p>Hi ${User.username},</p>
+              <p>We received a request to reset the password for your ${process.env.APP_NAME} account.</p>
+              <p>Please use the OTP below to verify your identity and proceed with resetting your password:</p>
+              <h3 style="color: #333; background: #f4f4f4; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+                ${otp}
+              </h3>
+              <p><strong>Note:</strong> This OTP is valid for the next 10 minutes. If you did not request a password reset, please ignore this email. Your account remains secure.</p>
+              <p>If you have any issues, feel free to reply to this email or visit our <a href="[Support Page URL]" style="color: #4CAF50;">support page</a>.</p>
+              <p>Best regards,<br/>The ${process.env.APP_NAME} Team</p>
+            </div>
+            `
+        );
+
+        return res.json({
+            message: "An OTP has been send on " + email + " for verificaiton purpose",
+            success: true
+        })
+    }
+    catch (error) {
+        console.error(`Error during requesting password reset : ${error}`)
+    }
 }
 
-module.exports = { Signup, Login, ResetPassword, VerifyOTP }
+const VerifyPasswordOTP = async (req, res) => {
+    const { user_id, otp } = req.body;
+    try {
+        //find the user
+        const User = await UserModel.findOne({
+            _id: user_id
+        });
+        if (!User)
+            return res.json({
+                message: "User not found, Invalid User ID",
+                success: false
+            })
+
+        if (await bcrypt.compare(otp, User.otp ? User.otp : "")) {
+            User.otp = "";
+            await User.save();
+            //send it to user
+            return res.json({
+                success: true,
+                message: "Verified",
+            })
+        }
+
+        return res.json({
+            message: "Invalid OTP",
+            success: false
+        })
+    }
+    catch (error) {
+        return res.json({
+            message: error.message,
+            success: false
+        })
+    }
+}
+
+const PerformPasswordReset = async(req,res) => {
+    //this function applies new password into the database
+    const {user_id, newPassword} = req.body;
+    
+    try{
+        const User = await UserModel.findOne({
+            _id : user_id
+        })
+        if(!User)
+            return res.json({
+                message : "User not found",
+                success : false
+            })
+
+        const securedPassword = await HashPassword(newPassword);
+        User.password = securedPassword;//updating the new secured password;
+        await User.save();
+
+        //notifying user via email
+        await sendEmail(
+            User.email,
+            `${process.env.APP_NAME} - Password Reset Successful`,
+            `Your password for your ${process.env.APP_NAME} account has been successfully reset.`,
+            `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h2 style="color: #4CAF50;">Password Reset Successful</h2>
+              <p>Hi ${User.username},</p>
+              <p>We wanted to let you know that the password for your ${process.env.APP_NAME} account has been successfully reset.</p>
+              <p>If you made this change, you can safely ignore this email. You can now log in to your account with your new password.</p>
+              <p><strong>Didn't reset your password?</strong></p>
+              <p>If you didn't request this change, please contact us immediately by visiting our <a href="[Support Page URL]" style="color: #4CAF50;">support page</a>. We’ll help secure your account.</p>
+              <p>For added security, we recommend regularly updating your password and enabling two-factor authentication if available.</p>
+              <p>Thank you for using ${process.env.APP_NAME}. If you have any questions, feel free to reach out to us!</p>
+              <p>Best regards,<br/>The ${process.env.APP_NAME} Team</p>
+            </div>
+            `
+        );
+        
+
+        return res.json({
+            message : "Password Reset was successful",
+            success : true
+        })
+    }
+    catch(error){
+        console.error(`Error during Reset Password verified : ${error}`);
+        return res.json({
+            success : false,
+            message : error.message
+        })
+    }
+}
+
+module.exports = { Signup, Login, ResetPassword, VerifyOTP, PerformPasswordReset, VerifyPasswordOTP }
