@@ -143,13 +143,13 @@ const VerifyOTP = async (req, res) => {
 
             //send email
             await sendEmail(
-                email,
+                User.email,
                 "Welcome to " + process.env.APP_NAME + " - Account Verified Successfully!",
                 `Congratulations! Your account on ${process.env.APP_NAME} has been verified. You now have full access to your account and can start securely storing and managing your files.`,
                 `
                 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                   <h2 style="color: #4CAF50;">Welcome to ${process.env.APP_NAME}!</h2>
-                  <p>Hi ${username},</p>
+                  <p>Hi ${User.username},</p>
                   <p>Congratulations! Your account has been successfully verified.</p>
                   <p>You now have full access to ${process.env.APP_NAME} and can take advantage of all our features to securely store, organize, and manage your files. Here’s what you can do:</p>
                   <ul>
